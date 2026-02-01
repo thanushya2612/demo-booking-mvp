@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lead Submission and Demo Scheduling Platform</title>
+  <style>
+    /* Style for first page chat box */
+    #chat {
+      border: 2px solid #2563eb;
+      padding: 20px;
+      margin-bottom: 20px;
+      font-size: 20px;
+      border-radius: 10px;
+      max-width: 600px;
+      background-color: #f0f8ff;
+    }
+
+    #chat button {
+      padding: 12px 20px;
+      font-size: 18px;
+      margin-right: 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background-color: #2563eb;
+      color: white;
+    }
+
+    #chat button:hover {
+      background-color: #1e40af;
+    }
+
+    /* Style for lead form inputs and buttons */
+    #form input {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    #form button {
+      padding: 14px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      background-color: #2563eb;
+      color: white;
+    }
+
+    #form button:hover {
+      background-color: #1e40af;
+    }
+
+    /* Optional: make the container centered and neat */
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f4f4f4;
+    }
+
+    #form {
+      max-width: 600px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div id="chat">
+  <p id="message"></p>
+  <button id="yesBtn">Yes</button>
+  <button id="noBtn">No</button>
+</div>
+
+<div id="form" style="display:none;">
+  <h3>Submit Business Lead</h3>
+
+  <input id="name" placeholder="Please enter your name" />
+  <input id="email" placeholder="Please enter your emailID" />
+  <input id="contactNumber" placeholder="Please enter your contact number" />
+
+  <button id="submitLead">Submit Lead</button>
+  <p id="leadMessage" style="color:green"></p>
+
+  <hr>
+
+  <h3>Book Demo</h3>
+  <input id="date" type="date" />
+  <input id="time" type="time" />
+  <button id="submitDemo">Book Demo</button>
+  <p id="demoMessage" style="color:green"></p>
+</div>
+
+<script src="/static/index.js"></script>
+</body>
+</html>
