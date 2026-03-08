@@ -3,7 +3,7 @@
 <head>
   <title>Lead Submission and Demo Scheduling Platform</title>
   <style>
-    /* Style for first page chat box */
+    /* Chat box style */
     #chat {
       border: 2px solid #2563eb;
       padding: 20px;
@@ -25,12 +25,10 @@
       color: white;
     }
 
-    #chat button:hover {
-      background-color: #1e40af;
-    }
+    #chat button:hover { background-color: #1e40af; }
 
-    /* Style for lead form inputs and buttons */
-    #form input {
+    /* Lead & Demo form style */
+    #form input, #newDemoForm input {
       width: 100%;
       padding: 14px;
       font-size: 16px;
@@ -40,7 +38,7 @@
       box-sizing: border-box;
     }
 
-    #form button {
+    #form button, #newDemoForm button {
       padding: 14px 20px;
       font-size: 16px;
       border-radius: 6px;
@@ -50,11 +48,9 @@
       color: white;
     }
 
-    #form button:hover {
-      background-color: #1e40af;
-    }
+    #form button:hover, #newDemoForm button:hover { background-color: #1e40af; }
 
-    /* Optional: make the container centered and neat */
+    /* Container styling */
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
@@ -64,20 +60,23 @@
       background-color: #f4f4f4;
     }
 
-    #form {
-      max-width: 600px;
-      width: 100%;
-    }
+    #form, #newDemoForm, #historyDiv { max-width: 600px; width: 100%; margin-top: 20px; }
+    #customerLinks a { display:block; margin:10px 0; font-weight:bold; color:#1e40af; text-decoration:underline; text-align:center; }
+    #historyDiv table { width:100%; border-collapse: collapse; background: #fff; }
+    #historyDiv th, #historyDiv td { border: 1px solid #ccc; padding:10px; text-align:left; }
+    #historyDiv th { background: #eee; }
   </style>
 </head>
 <body>
 
+<!-- Initial chatbot box -->
 <div id="chat">
   <p id="message"></p>
   <button id="yesBtn">Yes</button>
   <button id="noBtn">No</button>
 </div>
 
+<!-- Main lead/demo form -->
 <div id="form" style="display:none;">
   <h3>Submit Business Lead</h3>
 
@@ -95,6 +94,24 @@
   <input id="time" type="time" />
   <button id="submitDemo">Book Demo</button>
   <p id="demoMessage" style="color:green"></p>
+
+  <hr>
+  
+  <div id="customerLinks" style="margin-top:10px; display:none;">
+</div>
+</div>
+
+<!-- New demo link form -->
+<div id="newDemoForm" style="display:none;">
+  <h3>Book Demo (New Link)</h3>
+  <input id="newEmail" placeholder="Email used in lead submission" />
+  <input id="newContactNumber" placeholder="Contact number used in lead submission" />
+  <input id="newDate" type="date" />
+  <input id="newTime" type="time" />
+  <button id="submitNewDemo">Book Demo</button>
+  <p id="newDemoMessage" style="color:green"></p>
+  <hr>
+  <div id="historyDiv"></div>
 </div>
 
 <script src="/static/index.js"></script>
