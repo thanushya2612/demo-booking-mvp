@@ -1,0 +1,73 @@
+{
+  "clients": {
+    "clientA": {
+      "leads": [
+        {
+          "name": "Thanushya",
+          "email": "thanushya2612@gmail.com",
+          "contactNumber": "8341100581",
+          "createdAt": "2026-02-28T16:28:25.413Z",
+          "demo": [
+            {
+              "date": "2026-03-15",
+              "time": "16:30",
+              "createdAt": "2026-02-28T16:28:54.775Z"
+            }
+          ]
+        },
+        {
+          "name": "candy",
+          "email": "candy123@gmail.com",
+          "contactNumber": "8341100581",
+          "createdAt": "2026-02-28T16:36:47.013Z",
+          "demo": [
+            {
+              "date": "2026-05-15",
+              "time": "15:30",
+              "createdAt": "2026-02-28T16:37:07.245Z"
+            }
+          ]
+        }
+      ]
+    },
+    "clientB": {
+      "leads": [
+        {
+          "name": "Thanushya",
+          "email": "thanushya2612@gmail.com",
+          "contactNumber": "8341100581",
+          "createdAt": "2026-03-01T15:56:16.456Z",
+          "demo": [
+            {
+              "date": "2026-03-15",
+              "time": "03:45",
+              "createdAt": "2026-03-01T15:57:11.816Z"
+            },
+            {
+              "date": "2026-03-15",
+              "time": "04:15",
+              "createdAt": "2026-03-01T16:01:49.469Z"
+            }
+          ]
+        }
+      ]
+    },
+    "clientC": {
+      "leads": [
+        {
+          "name": "Thanushya",
+          "email": "thanushya2612@gmail.com",
+          "contactNumber": "8341100581",
+          "createdAt": "2026-03-02T01:26:21.580Z",
+          "demo": [
+            {
+              "date": "2026-03-14",
+              "time": "12:30",
+              "createdAt": "2026-03-02T01:26:41.063Z"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

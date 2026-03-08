@@ -1,0 +1,20 @@
+[
+  {
+    "client": "clientB",
+    "ip": "::1",
+    "path": "/client-dashboard?client=clientB&sig=e91129f4a9578ab4666c4f03d4534b7c6446ae75a18629ee92bd06807bcedf7a",
+    "time": "2026-03-01T16:14:45.625Z"
+  },
+  {
+    "client": "clientC",
+    "ip": "::1",
+    "path": "/client-dashboard?client=clientC&sig=278c35feefd417868748e4310a9eab9104e098e4623053c0084cff1685178055",
+    "time": "2026-03-02T01:25:52.096Z"
+  },
+  {
+    "client": "clientC",
+    "ip": "::1",
+    "path": "/client-dashboard?client=clientC&sig=278c35feefd417868748e4310a9eab9104e098e4623053c0084cff1685178055",
+    "time": "2026-03-02T01:27:34.471Z"
+  }
+]
