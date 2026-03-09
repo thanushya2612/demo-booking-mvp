@@ -31,7 +31,7 @@ function generateClientLink(clientId, clientKey) {
     .update(clientId)
     .digest("hex");
 
-  const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+  const BASE_URL = `https://demo-booking-mvp-2.onrender.com`;
 
 return `${BASE_URL}/client-dashboard?client=${clientId}&sig=${hash}`;
 }
@@ -218,6 +218,10 @@ const leads = db.clients[req.client].leads;
 // CUSTOMER FRONTEND
 // ===============================
 app.get("/", (req, res) => {
+  const clientId = req.query.client;
+  if (!clientId) return
+res.status(400).send("Client ID missing");
+
   res.sendFile(path.join(__dirname, "..", "src", "index.html"));
 });
 
@@ -228,82 +232,80 @@ app.get("/static/index.js", (req, res) => {
 app.get("/demo-link", (req, res) => {
   const { client, email, contact } = req.query;
 
+  if (!client || !email || !contact) {
+    return res.status(400).send("Missing client or lead info");
+  }
+
+  const clients = JSON.parse(fs.readFileSync(clientsFile, "utf-8"));
+  if (!clients[client] || !clients[client].active) {
+    return res.status(404).send("Client not found or inactive");
+  }
+
+  // Redirect with proper client context
   res.redirect(
     `/?mode=demo&client=${client}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contact)}`
   );
 });
 
 app.get("/history", (req, res) => {
-
   const { email, contact, client } = req.query;
 
-  if (!client || !email || !contact) {
-    return res.send("Invalid request.");
-  }
+  if (!client || !email || !contact) return res.status(400).send("Invalid request.");
+
+  const clients = JSON.parse(fs.readFileSync(clientsFile, "utf-8"));
+  if (!clients[client] || !clients[client].active) return res.status(404).send("Client not found or inactive");
 
   const db = readDB();
-
-  if (!db.clients[client]) {
-    return res.send("Invalid client.");
-  }
+  if (!db.clients[client]) return res.status(404).send("Client data not found");
 
   const clientLeads = db.clients[client].leads;
-
-  const lead = clientLeads.find(
-    l => l.email === email && l.contactNumber === contact
-  );
-
+  const lead = clientLeads.find(l => l.email === email && l.contactNumber === contact);
   if (!lead) return res.send("No history found.");
 
   const rows = (lead.demo || []).map(d => `
-  <tr>
-    <td>${lead.name}</td>
-    <td>${lead.email}</td>
-    <td>${lead.contactNumber}</td>
-    <td>${d.date}</td>
-    <td>${d.time}</td>
-    <td>
-      <button onclick="deleteDemo('${lead.email}','${lead.contactNumber}','${d.date}','${d.time}')">
-        Delete
-      </button>
-    </td>
-  </tr>
+    <tr>
+      <td>${lead.name}</td>
+      <td>${lead.email}</td>
+      <td>${lead.contactNumber}</td>
+      <td>${d.date}</td>
+      <td>${d.time}</td>
+      <td>
+        <button onclick="deleteDemo('${lead.email}','${lead.contactNumber}','${d.date}','${d.time}','${client}')">
+          Delete
+        </button>
+      </td>
+    </tr>
   `).join("");
 
   res.send(`
-  <h2>Your Demo History</h2>
+    <h2>Your Demo History</h2>
+    <table border="1" cellpadding="10">
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Contact</th>
+        <th>Demo Date</th>
+        <th>Demo Time</th>
+        <th>Action</th>
+      </tr>
+      ${rows}
+    </table>
 
-  <table border="1" cellpadding="10">
-    <tr>
-      <th>Name</th>
-      <th>Email</th>
-      <th>Contact</th>
-      <th>Demo Date</th>
-      <th>Demo Time</th>
-      <th>Action</th>
-    </tr>
-    ${rows}
-  </table>
+    <script>
+      async function deleteDemo(email, contactNumber, date, time, clientId) {
+        if (!confirm("Are you sure you want to delete this demo?")) return;
 
-  <script>
-    async function deleteDemo(email, contactNumber, date, time) {
-      if (!confirm("Are you sure you want to delete this demo?")) return;
+        const res = await fetch("/demo?client=" + clientId, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, contactNumber, date, time })
+        });
 
-      const res = await fetch("/demo?client=${client}", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, contactNumber, date, time })
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        alert(data.error);
-      } else {
-        location.reload();
+        const data = await res.json();
+        if (data.error) alert(data.error);
+        else location.reload();
       }
-    }
-  </script>
+    </script>
   `);
 });
 
@@ -364,8 +366,8 @@ if (existingLead) {
   return res.json({
     alreadyExists: true,
     message: "You have already submitted your details. So you can directly book a demo without giving lead details by using the demo link given below.",
-    demoLink: `/demo-link?client=${clientId}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contactNumber)}`,
-    historyLink: `/history?client=${clientId}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contactNumber)}`
+    demoLink: `/demo-link?client=${clientId}`,
+    historyLink: `/history?client=${clientId}`
   });
 }
 
