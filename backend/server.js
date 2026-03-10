@@ -233,8 +233,9 @@ const leads = db.clients[req.client].leads;
 // ===============================
 app.get("/", (req, res) => {
   const clientId = req.query.client;
-  if (!clientId) return
-res.status(400).send("Client ID missing");
+  if (!clientId) {
+    return res.status(400).send("Client ID missing");
+  }
 
   res.sendFile(path.join(__dirname, "..", "src", "index.html"));
 });
