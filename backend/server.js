@@ -20,6 +20,7 @@ const clientsFile = path.join(__dirname, "clients.json");
 const usageLogFile = path.join(__dirname, "usage-log.json");
 
 const app = express();
+app.set("trust proxy", true);
 app.use(express.json({ limit: "10kb" }));
 
 // =======================
@@ -31,7 +32,7 @@ function generateClientLink(clientId, clientKey) {
     .update(clientId)
     .digest("hex");
 
-  const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+  const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
 return `${BASE_URL}/client-dashboard?client=${clientId}&sig=${hash}`;
 }
@@ -75,6 +76,10 @@ function getNextAvailableTime(dbData, GAP = 30 * 60 * 1000) {
 // =======================
 app.use("/client-dashboard", (req, res, next) => {
 
+  if (req.path !== "/") {
+    return next();
+  }
+
   const clientId = req.query.client;
   const sig = req.query.sig;
 
@@ -103,31 +108,39 @@ app.use("/client-dashboard", (req, res, next) => {
     return res.status(403).send("Invalid signature");
   }
 
-  const ip = req.ip;
-  req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+// --------------------
+// GET CLIENT IP (works on Render and localhost)
+// --------------------
+let ip = req.socket.remoteAddress || "";
+if (req.headers["x-forwarded-for"]) {
+  // Take the last IP in the x-forwarded-for list → real client IP
+  const xff = req.headers["x-forwarded-for"];
+  ip = xff.split(",").map(i => i.trim()).pop();
+}
 
-  // 🔒 IP Locking Logic
-  if (!client.activeLink) {
+// --------------------
+// IP LOCKING LOGIC
+// --------------------
+if (!client.activeLink) {
+  // First-time access: store sig and client IP automatically
+  client.activeLink = { sig, ip };
+  clients[clientId] = client;
+  fs.writeFileSync(clientsFile, JSON.stringify(clients, null, 2));
+} else {
+  if (client.activeLink.sig !== sig) {
+    return res.status(401).send("Invalid signature");
+  }
 
-    // First time access → store signature + IP
-    client.activeLink = { sig, ip };
-    clients[clientId] = client;
-
-    fs.writeFileSync(
-      clientsFile,
-      JSON.stringify(clients, null, 2)
-    );
-
-  } else {
-
-    if (client.activeLink.sig !== sig) {
-      return res.status(401).send("Invalid signature");
-    }
-
-    if (client.activeLink.ip !== ip) {
+  // Only enforce IP check if NOT localhost/dev
+  if (process.env.NODE_ENV === "production") {
+    if (client.activeLink.ip && client.activeLink.ip !== ip) {
       return res.status(403).send("This link cannot be shared");
     }
+  } else {
+    // DEV / localhost → ignore IP mismatch
+    client.activeLink.ip = null; // optional: allow reset for testing
   }
+}
 
   // 📊 Usage Logging
   let logs = [];
@@ -523,18 +536,6 @@ const lead = clientLeads.find(
 // ===============================
 // ADMIN LINK GENERATOR
 app.get("/generate-link/:clientId", (req, res) => {
-  // 🔐 Check admin secret from environment internally
-  const adminSecret = process.env.ADMIN_SECRET;
-  if (!adminSecret) {
-    return res.status(500).send("Server misconfigured");
-  }
-
-  // Expect admin to provide secret in headers (not URL)
-  const providedSecret = req.headers["x-admin-secret"];
-  if (providedSecret !== adminSecret) {
-    return res.status(403).send("Forbidden");
-  }
-
   const clientId = req.params.clientId;
   const clients = JSON.parse(fs.readFileSync(clientsFile, "utf-8"));
   const client = clients[clientId];
@@ -542,9 +543,16 @@ app.get("/generate-link/:clientId", (req, res) => {
   if (!client) return res.status(404).send("Client not found");
   if (!client.active) return res.status(403).send("Client inactive");
 
-  // Generate safe client link (using stored key, never exposed)
+  // use client.key directly (no admin secret required)
   const link = generateClientLink(clientId, client.key);
-  res.send(`<a href="${link}" target="_blank">${link}</a>`);
+
+// reset previous active link
+client.activeLink = null;
+
+clients[clientId] = client;
+fs.writeFileSync(clientsFile, JSON.stringify(clients, null, 2));
+
+res.send(`<a href="${link}" target="_blank">${link}</a>`);
 });
 
 // ===============================

@@ -4,7 +4,7 @@
     "active": true,
     "activeLink": {
       "sig": "5cff7ff8673fc155a7d6cf35806c3034c213433e6892cf156dba79ea8ff9a561",
-      "ip": "::1"
+      "ip": null
     }
   },
   "clientB": {
@@ -12,7 +12,7 @@
     "active": true,
     "activeLink": {
       "sig": "e91129f4a9578ab4666c4f03d4534b7c6446ae75a18629ee92bd06807bcedf7a",
-      "ip": "::1"
+      "ip": null
     }
   },
   "clientC": {
@@ -20,7 +20,7 @@
     "active": true,
     "activeLink": {
       "sig": "278c35feefd417868748e4310a9eab9104e098e4623053c0084cff1685178055",
-      "ip": "::1"
+      "ip": null
     }
   }
 }
