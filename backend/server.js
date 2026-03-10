@@ -31,7 +31,7 @@ function generateClientLink(clientId, clientKey) {
     .update(clientId)
     .digest("hex");
 
-  const BASE_URL = `https://demo-booking-mvp-2.onrender.com`;
+  const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 return `${BASE_URL}/client-dashboard?client=${clientId}&sig=${hash}`;
 }
@@ -104,6 +104,7 @@ app.use("/client-dashboard", (req, res, next) => {
   }
 
   const ip = req.ip;
+  req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
   // 🔒 IP Locking Logic
   if (!client.activeLink) {
@@ -334,14 +335,12 @@ Do you want to continue?`
 app.post("/leads", (req, res) => {
   const clientId = req.query.client;
   if (!clientId) {
-    return
-  res.status(400).json({ error: "Invalid request." });
+    return res.status(400).json({ error: "Invalid request." });
 }
 const db = readDB();
 
 if (!db.clients[clientId]) {
-  return
-  res.status(400).json({ error: "Invalid request."});
+  return res.status(400).json({ error: "Invalid request."});
 }
   const { name, email, contactNumber } = req.body;
 
@@ -524,8 +523,15 @@ const lead = clientLeads.find(
 // ===============================
 // ADMIN LINK GENERATOR
 app.get("/generate-link/:clientId", (req, res) => {
-  const adminSecret = req.query.secret;
-  if (adminSecret !== process.env.ADMIN_SECRET) {
+  // 🔐 Check admin secret from environment internally
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret) {
+    return res.status(500).send("Server misconfigured");
+  }
+
+  // Expect admin to provide secret in headers (not URL)
+  const providedSecret = req.headers["x-admin-secret"];
+  if (providedSecret !== adminSecret) {
     return res.status(403).send("Forbidden");
   }
 
@@ -536,6 +542,7 @@ app.get("/generate-link/:clientId", (req, res) => {
   if (!client) return res.status(404).send("Client not found");
   if (!client.active) return res.status(403).send("Client inactive");
 
+  // Generate safe client link (using stored key, never exposed)
   const link = generateClientLink(clientId, client.key);
   res.send(`<a href="${link}" target="_blank">${link}</a>`);
 });
@@ -549,5 +556,5 @@ if (process.env.NODE_ENV === "production") {
 // ===============================
 // PORT
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => 
-  console.log(`Server running on port $ {PORT}`));
+app.listen(PORT, '0.0.0.0', () => 
+  console.log(`Server running on port ${PORT}`));
