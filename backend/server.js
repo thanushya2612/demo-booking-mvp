@@ -256,9 +256,10 @@ app.get("/demo-link", (req, res) => {
   }
 
   // Redirect with proper client context
-  res.redirect(
-    `/?mode=demo&client=${client}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contact)}`
-  );
+  const BASE_URL = process.env.BASE_URL || "https://your-render-app.onrender.com";
+res.redirect(
+  `${BASE_URL}/?mode=demo&client=${client}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contact)}`
+);
 });
 
 app.get("/history", (req, res) => {
@@ -375,11 +376,12 @@ if (!db.clients[clientId]) {
 );
 
 if (existingLead) {
+  const BASE_URL = process.env.BASE_URL || "https://your-render-app.onrender.com";
   return res.json({
     alreadyExists: true,
     message: "You have already submitted your details. So you can directly book a demo without giving lead details by using the demo link given below.",
-    demoLink: `/demo-link?client=${clientId}`,
-    historyLink: `/history?client=${clientId}`
+    demoLink: `${BASE_URL}/demo-link?client=${clientId}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contactNumber)}`,
+    historyLink: `${BASE_URL}/history?client=${clientId}&email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contactNumber)}`
   });
 }
 
