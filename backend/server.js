@@ -229,6 +229,200 @@ const leads = db.clients[req.client].leads;
 });
 
 // ===============================
+// WEEKLY SCHEDULING DASHBOARD
+// ===============================
+app.get("/weekly-dashboard", (req, res) => {
+
+const clientId = req.query.client;
+
+if(!clientId) return res.send("Client missing");
+
+const clients = JSON.parse(fs.readFileSync(clientsFile,"utf-8"));
+const client = clients[clientId];
+
+if(!client) return res.send("Client not found");
+
+const today = new Date();
+const day = today.getDay();
+const mondayOffset = day === 0 ? -6 : 1-day;
+
+const week=[];
+
+for(let i=0;i<7;i++){
+
+const d = new Date(today);
+d.setDate(today.getDate()+mondayOffset+i);
+
+const date = d.getDate();
+const month = d.toLocaleString("en-US",{month:"short"});
+const dayName = d.toLocaleString("en-US",{weekday:"long"});
+const iso = d.toISOString().split("T")[0];
+
+week.push({date,month,dayName,iso});
+
+}
+
+let rows="";
+
+week.forEach(w=>{
+
+rows+=`
+<tr>
+<td>${w.month}</td>
+<td>${w.date}</td>
+<td>${w.dayName}</td>
+<td><input type="time" step="60" id="start-${w.iso}"></td>
+<td><input type="time" step="60" id="end-${w.iso}"></td>
+</tr>
+`;
+
+});
+
+res.send(`
+
+<html>
+<head>
+
+<style>
+
+body{font-family:Arial;padding:30px;background:#f4f4f4}
+
+table{border-collapse:collapse;width:100%;background:white}
+
+th,td{border:1px solid #ccc;padding:10px;text-align:center}
+
+th{background:#eee}
+
+button{margin-top:20px;padding:10px}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Weekly Schedule</h2>
+
+<table>
+
+<tr>
+<th>Month</th>
+<th>Date</th>
+<th>Day</th>
+<th>Start Time</th>
+<th>End Time</th>
+</tr>
+
+${rows}
+
+</table>
+
+<button onclick="save()">Save</button>
+
+<script>
+
+async function save(){
+
+const schedule={}
+
+for(let i=0;i<7;i++){
+
+const row=document.querySelectorAll("tr")[i+1]
+
+const date=row.children[1].innerText
+const day=row.children[2].innerText
+
+const start=row.querySelector("input[id^='start']").value
+const end=row.querySelector("input[id^='end']").value
+
+if(!start||!end) continue
+
+const today=new Date()
+
+const selected=new Date(today)
+selected.setDate(parseInt(date))
+
+if(selected < today){
+alert(day+" already finished. Cannot set time.")
+return
+}
+
+if(start===end){
+schedule[row.children[1].innerText]={day,start,end}
+continue
+}
+
+if(start > end){
+alert(day+" start must be before end")
+return
+}
+
+schedule[row.children[1].innerText]={day,start,end}
+
+}
+
+await fetch("/save-schedule?client=${clientId}",{
+
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(schedule)
+
+})
+
+alert("Schedule saved")
+
+}
+
+</script>
+
+</body>
+</html>
+
+`)
+
+})
+
+// ===============================
+// SAVE WEEKLY SCHEDULE
+// ===============================
+app.post("/save-schedule",(req,res)=>{
+
+const clientId=req.query.client;
+
+const clients = JSON.parse(fs.readFileSync(clientsFile,"utf-8"));
+
+if(!clients[clientId]) return res.send("client not found")
+
+const today=new Date()
+const day=today.getDay()
+const mondayOffset=day===0?-6:1-day
+
+const schedule=req.body
+
+clients[clientId].weeklySchedule={}
+
+let i=0
+
+for(const k in schedule){
+
+const d=new Date(today)
+d.setDate(today.getDate()+mondayOffset+i)
+
+const iso=d.toISOString().split("T")[0]
+
+clients[clientId].weeklySchedule[iso]=schedule[k]
+
+i++
+
+}
+
+fs.writeFileSync(clientsFile,JSON.stringify(clients,null,2))
+
+res.json({message:"saved"})
+
+})
+
+// ===============================
 // CUSTOMER FRONTEND
 // ===============================
 app.get("/", (req, res) => {
@@ -447,37 +641,75 @@ app.post("/demo", (req, res) => {
 
   const lead = clientLeads[leadIndex];
 
-  const GAP = 30 * 60 * 1000;
+// =======================
+// SCHEDULE + GAP CHECK
+// =======================
 
-  const demosOnDate = [];
+const GAP = 30 * 60 * 1000;
 
-  for (const l of clientLeads) {
-    for (const d of (Array.isArray(l.demo) ? l.demo : [])) {
-      if (d.date === date) {
-        demosOnDate.push(new Date(`${d.date}T${d.time}:00`));
-      }
-    }
-  }
+const clients = JSON.parse(fs.readFileSync(clientsFile,"utf-8"));
 
-  let latestDemoTime = null;
+const schedule = clients[clientId].weeklySchedule || {};
 
-  if (demosOnDate.length > 0) {
-    latestDemoTime = new Date(Math.max(...demosOnDate));
-  }
+const daySchedule = schedule[date];
 
-  let nextAvailableTime = latestDemoTime
-    ? new Date(latestDemoTime.getTime() + GAP)
-    : new Date(`${date}T00:00:00`);
+if(!daySchedule){
+return res.status(409).json({
+error:"No demos scheduled for this day"
+})
+}
 
-  if (demoDateTime < nextAvailableTime) {
-    const hh = nextAvailableTime.getHours().toString().padStart(2, "0");
-    const mm = nextAvailableTime.getMinutes().toString().padStart(2, "0");
+if(daySchedule.start === daySchedule.end){
+return res.status(409).json({
+error:"No demos available this day"
+})
+}
 
-    return res.status(409).json({
-      error: `This demo slot is booked. Book after ${hh}:${mm}.`,
-      nextAvailable: `${hh}:${mm}`
-    });
-  }
+const startDateTime = new Date(`${date}T${daySchedule.start}:00`);
+const endDateTime = new Date(`${date}T${daySchedule.end}:00`);
+
+if(demoDateTime < startDateTime || demoDateTime > endDateTime){
+
+return res.status(409).json({
+error:"This slot is outside allowed demo time",
+nextAvailableDateTime: `${date} ${daySchedule.start}`
+})
+
+}
+
+const demos=[]
+
+for(const l of clientLeads){
+for(const d of l.demo){
+if(d.date===date){
+demos.push(new Date(`${d.date}T${d.time}:00`))
+}
+}
+}
+
+demos.sort((a,b)=>a-b)
+
+let next=new Date(startDateTime)
+
+for(const slot of demos){
+
+if(Math.abs(slot-next)<GAP){
+next=new Date(slot.getTime()+GAP)
+}
+
+}
+
+if(demoDateTime < next){
+
+const hh = next.getHours().toString().padStart(2,"0")
+const mm = next.getMinutes().toString().padStart(2,"0")
+
+return res.status(409).json({
+error:"This slot is unavailable",
+nextAvailableDateTime:`${date} ${hh}:${mm}`
+})
+
+}
 
   lead.demo.push({
     date,
