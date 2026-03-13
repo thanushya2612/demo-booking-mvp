@@ -327,7 +327,7 @@ const schedule={}
 
 for(let i=0;i<7;i++){
 
-const row=document.querySelectorAll("tr")[i+1]
+const row=document.querySelectorAll("table tr")[i+1]
 
 const date=row.children[1].innerText
 const day=row.children[2].innerText
@@ -348,7 +348,7 @@ return
 }
 
 if(start===end){
-schedule[row.children[1].innerText]={day,start,end}
+schedule[row.querySelector("input[id^='start']").id.replace("start-","")]={day,start,end}
 continue
 }
 
@@ -357,7 +357,7 @@ alert(day+" start must be before end")
 return
 }
 
-schedule[row.children[1].innerText]={day,start,end}
+schedule[row.querySelector("input[id^='start']").id.replace("start-","")]={day,start,end}
 
 }
 
@@ -401,19 +401,8 @@ const schedule=req.body
 
 clients[clientId].weeklySchedule={}
 
-let i=0
-
-for(const k in schedule){
-
-const d=new Date(today)
-d.setDate(today.getDate()+mondayOffset+i)
-
-const iso=d.toISOString().split("T")[0]
-
-clients[clientId].weeklySchedule[iso]=schedule[k]
-
-i++
-
+for(const iso in schedule){
+clients[clientId].weeklySchedule[iso] = schedule[iso]
 }
 
 fs.writeFileSync(clientsFile,JSON.stringify(clients,null,2))
