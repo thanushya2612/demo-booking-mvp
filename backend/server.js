@@ -361,7 +361,7 @@ schedule[row.querySelector("input[id^='start']").id.replace("start-","")]={day,s
 
 }
 
-await fetch("/save-schedule?client=${clientId}",{
+const res = await fetch("/save-schedule?client=${clientId}",{
 
 method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -369,7 +369,13 @@ body:JSON.stringify(schedule)
 
 })
 
+const data = await res.json()
+
+if(data.error){
+alert(data.error)
+}else{
 alert("Schedule saved")
+}
 
 }
 
@@ -417,13 +423,16 @@ const clientId=req.query.client;
 
 const clients = JSON.parse(fs.readFileSync(clientsFile,"utf-8"));
 
-if(!clients[clientId]) return res.send("client not found")
+if(!clients[clientId]){
+return res.send("client not found")}
 
 const today=new Date()
 const day=today.getDay()
 const mondayOffset=day===0?-6:1-day
 
 const schedule=req.body
+console.log("Saving schedule for:",clientId)
+console.log(schedule)
 
 clients[clientId].weeklySchedule={}
 
