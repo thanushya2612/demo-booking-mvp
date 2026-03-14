@@ -68,11 +68,7 @@ function getNextAvailableTime(dbData, GAP = 30 * 60 * 1000) {
 
   const hh = next.getHours().toString().padStart(2, "0");
   const mm = next.getMinutes().toString().padStart(2, "0");
-  
-  const yyyy = next.getFullYear();
-  const mm2 = (next.getMonth() + 1).toString().padStart(2, "0");
-  const dd = next.getDate().toString().padStart(2, "0");
-  return `${yyyy}-${mm2}-${dd} ${hh}:${mm}`;
+  return `${hh}:${mm}`;
 }
 
 // =======================
