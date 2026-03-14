@@ -373,8 +373,6 @@ alert("Schedule saved")
 
 }
 
-<script>
-
 document.addEventListener("input",e=>{
 
 if(e.target.id.startsWith("start-")){
@@ -402,6 +400,7 @@ e.target.value=""
 
 })
 
+</script>
 </body>
 </html>
 
