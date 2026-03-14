@@ -68,7 +68,11 @@ function getNextAvailableTime(dbData, GAP = 30 * 60 * 1000) {
 
   const hh = next.getHours().toString().padStart(2, "0");
   const mm = next.getMinutes().toString().padStart(2, "0");
-  return `${hh}:${mm}`;
+  
+  const yyyy = next.getFullYear();
+  const mm2 = (next.getMonth() + 1).toString().padStart(2, "0");
+  const dd = next.getDate().toString().padStart(2, "0");
+  return `${yyyy}-${mm2}-${dd} ${hh}:${mm}`;
 }
 
 // =======================
@@ -266,13 +270,16 @@ let rows="";
 
 week.forEach(w=>{
 
+const todayISO = new Date().toISOString().split("T")[0]
+const disabled = w.iso < todayISO ? "disabled" : ""
+
 rows+=`
 <tr>
 <td>${w.month}</td>
 <td>${w.date}</td>
 <td>${w.dayName}</td>
-<td><input type="time" step="60" id="start-${w.iso}"></td>
-<td><input type="time" step="60" id="end-${w.iso}"></td>
+<td><input type="time" step="60" id="start-${w.iso}" ${disabled}></td>
+<td><input type="time" step="60" id="end-${w.iso}" ${disabled}></td>
 </tr>
 `;
 
@@ -329,7 +336,7 @@ for(let i=0;i<7;i++){
 
 const row=document.querySelectorAll("table tr")[i+1]
 
-const date=row.children[1].innerText
+const iso=row.querySelector("input[id^='start']").id.replace("start-","")
 const day=row.children[2].innerText
 
 const start=row.querySelector("input[id^='start']").value
@@ -337,12 +344,9 @@ const end=row.querySelector("input[id^='end']").value
 
 if(!start||!end) continue
 
-const today=new Date()
+const today=new Date().toISOString().split("T")[0]
 
-const selected=new Date(today)
-selected.setDate(parseInt(date))
-
-if(selected < today){
+if(iso < today){
 alert(day+" already finished. Cannot set time.")
 return
 }
@@ -373,7 +377,34 @@ alert("Schedule saved")
 
 }
 
-</script>
+<script>
+
+document.addEventListener("input",e=>{
+
+if(e.target.id.startsWith("start-")){
+
+const iso=e.target.id.replace("start-","")
+const end=document.getElementById("end-"+iso)
+
+if(end.value && end.value < e.target.value){
+end.value=""
+}
+
+}
+
+if(e.target.id.startsWith("end-")){
+
+const iso=e.target.id.replace("end-","")
+const start=document.getElementById("start-"+iso)
+
+if(start.value && e.target.value < start.value){
+alert("End time cannot be before start time")
+e.target.value=""
+}
+
+}
+
+})
 
 </body>
 </html>
@@ -643,25 +674,37 @@ const schedule = clients[clientId].weeklySchedule || {};
 const daySchedule = schedule[date];
 
 if(!daySchedule){
+
+const nextTime = getNextAvailableTime(db.clients[clientId])
+
 return res.status(409).json({
-error:"No demos scheduled for this day"
+error:"No demos scheduled for this day",
+nextAvailableDateTime: nextTime
 })
+
 }
 
 if(daySchedule.start === daySchedule.end){
+
+const nextTime = getNextAvailableTime(db.clients[clientId])
+
 return res.status(409).json({
-error:"No demos available this day"
+error:"No demos available this day",
+nextAvailableDateTime: nextTime
 })
+
 }
 
 const startDateTime = new Date(`${date}T${daySchedule.start}:00`);
 const endDateTime = new Date(`${date}T${daySchedule.end}:00`);
 
-if(demoDateTime < startDateTime || demoDateTime > endDateTime){
+if(demoDateTime < startDateTime || demoDateTime >= endDateTime){
+
+const nextTime = getNextAvailableTime(db.clients[clientId])
 
 return res.status(409).json({
 error:"This slot is outside allowed demo time",
-nextAvailableDateTime: `${date} ${daySchedule.start}`
+nextAvailableDateTime: nextTime
 })
 
 }
@@ -698,6 +741,30 @@ error:"This slot is unavailable",
 nextAvailableDateTime:`${date} ${hh}:${mm}`
 })
 
+}
+
+// FINAL SLOT LOCK CHECK (prevents simultaneous booking)
+
+for(const l of clientLeads){
+for(const d of l.demo){
+
+const existing = new Date(`${d.date}T${d.time}:00`)
+
+if(Math.abs(existing - demoDateTime) < GAP){
+
+const next = new Date(existing.getTime() + GAP)
+
+const hh = next.getHours().toString().padStart(2,"0")
+const mm = next.getMinutes().toString().padStart(2,"0")
+
+return res.status(409).json({
+error:"This slot was just booked by another user",
+nextAvailableDateTime:`${date} ${hh}:${mm}`
+})
+
+}
+
+}
 }
 
   lead.demo.push({
