@@ -434,7 +434,9 @@ const schedule=req.body
 console.log("Saving schedule for:",clientId)
 console.log(schedule)
 
+if(!clients[clientId].weeklySchedule){
 clients[clientId].weeklySchedule={}
+}
 
 for(const iso in schedule){
 clients[clientId].weeklySchedule[iso] = schedule[iso]
