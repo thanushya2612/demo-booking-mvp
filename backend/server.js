@@ -681,22 +681,32 @@ const daySchedule = schedule[date];
 
 if(!daySchedule){
 
-const nextTime = getNextAvailableTime(db.clients[clientId])
+const nextDate = new Date(date)
+nextDate.setDate(nextDate.getDate()+1)
+
+const yyyy = nextDate.getFullYear()
+const mm = (nextDate.getMonth()+1).toString().padStart(2,"0")
+const dd = nextDate.getDate().toString().padStart(2,"0")
 
 return res.status(409).json({
 error:"No demos scheduled for this day",
-nextAvailableDateTime: nextTime
+nextAvailableDateTime:`${yyyy}-${mm}-${dd} ${daySchedule.start}`
 })
 
 }
 
 if(daySchedule.start === daySchedule.end){
 
-const nextTime = getNextAvailableTime(db.clients[clientId])
+const nextDate = new Date(date)
+nextDate.setDate(nextDate.getDate()+1)
+
+const yyyy = nextDate.getFullYear()
+const mm = (nextDate.getMonth()+1).toString().padStart(2,"0")
+const dd = nextDate.getDate().toString().padStart(2,"0")
 
 return res.status(409).json({
 error:"No demos available this day",
-nextAvailableDateTime: nextTime
+nextAvailableDateTime:`${yyyy}-${mm}-${dd} ${daySchedule.start}`
 })
 
 }
@@ -706,11 +716,12 @@ const endDateTime = new Date(`${date}T${daySchedule.end}:00`);
 
 if(demoDateTime < startDateTime || demoDateTime >= endDateTime){
 
-const nextTime = getNextAvailableTime(db.clients[clientId])
+const hh = startDateTime.getHours().toString().padStart(2,"0")
+const mm = startDateTime.getMinutes().toString().padStart(2,"0")
 
 return res.status(409).json({
 error:"This slot is outside allowed demo time",
-nextAvailableDateTime: nextTime
+nextAvailableDateTime:`${date} ${hh}:${mm}`
 })
 
 }
