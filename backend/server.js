@@ -369,13 +369,15 @@ body:JSON.stringify(schedule)
 
 })
 
-const data = await res.json()
-
-if(data.error){
-alert(data.error)
-}else{
-alert("Schedule saved")
+if (!res.ok) {
+  const text = await res.text();
+  alert("Error: " + text);
+  return;
 }
+
+const data = await res.json();
+
+alert("Schedule saved");
 
 }
 
@@ -421,10 +423,14 @@ app.post("/save-schedule",(req,res)=>{
 
 const clientId=req.query.client;
 
-const clients = JSON.parse(fs.readFileSync(clientsFile,"utf-8"));
+let clients = {};
+if (fs.existsSync(clientsFile)) {
+  clients = JSON.parse(fs.readFileSync(clientsFile, "utf-8"));
+}
 
-if(!clients[clientId]){
-return res.send("client not found")}
+if (!clientId || !clients[clientId]) {
+  return res.status(400).json({ error: "Invalid clientId" });
+}
 
 const today=new Date()
 const day=today.getDay()
@@ -435,12 +441,14 @@ console.log("Saving schedule for:",clientId)
 console.log(schedule)
 
 if(!clients[clientId].weeklySchedule){
-clients[clientId].weeklySchedule={}
+clients[clientId].weeklySchedule = {};
 }
 
 for(const iso in schedule){
 clients[clientId].weeklySchedule[iso] = schedule[iso]
 }
+
+console.log("FINAL CLIENT DATA:", clients[clientId]);
 
 fs.writeFileSync(clientsFile,JSON.stringify(clients,null,2))
 
@@ -667,6 +675,56 @@ app.post("/demo", (req, res) => {
 
   const lead = clientLeads[leadIndex];
 
+  function getAvailableSlots(date, schedule, clientLeads) {
+  const GAP = 30 * 60 * 1000;
+
+  const daySchedule = schedule[date];
+  if (!daySchedule) return [];
+
+  const start = new Date(`${date}T${daySchedule.start}:00`);
+  const end = new Date(`${date}T${daySchedule.end}:00`);
+
+  if (daySchedule.start === daySchedule.end) return [];
+
+  const booked = [];
+
+  for (const l of clientLeads) {
+    for (const d of l.demo) {
+      if (d.date === date) {
+        booked.push(new Date(`${d.date}T${d.time}:00`));
+      }
+    }
+  }
+
+  const slots = [];
+  let current = new Date(start);
+
+  while (current < end) {
+    const now = new Date();
+
+    if (current > now) {
+      let conflict = false;
+
+      for (const b of booked) {
+        if (Math.abs(b - current) < GAP) {
+          conflict = true;
+          break;
+        }
+      }
+
+      if (!conflict) {
+        const hh = current.getHours().toString().padStart(2, "0");
+        const mm = current.getMinutes().toString().padStart(2, "0");
+        slots.push(`${hh}:${mm}`);
+      }
+    }
+
+    current = new Date(current.getTime() + GAP);
+  }
+
+  return slots;
+}
+
 // =======================
 // SCHEDULE + GAP CHECK
 // =======================
@@ -679,85 +737,28 @@ const schedule = clients[clientId].weeklySchedule || {};
 
 const daySchedule = schedule[date];
 
-if(!daySchedule){
+const today = new Date().toISOString().split("T")[0];
+const tomorrowDate = new Date();
+tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+const tomorrow = tomorrowDate.toISOString().split("T")[0];
 
-const nextDate = new Date(date)
-nextDate.setDate(nextDate.getDate()+1)
+const todaySlots = getAvailableSlots(today, schedule, clientLeads);
+const tomorrowSlots = getAvailableSlots(tomorrow, schedule, clientLeads);
 
-const yyyy = nextDate.getFullYear()
-const mm = (nextDate.getMonth()+1).toString().padStart(2,"0")
-const dd = nextDate.getDate().toString().padStart(2,"0")
-
-return res.status(409).json({
-error:"No demos scheduled for this day",
-nextAvailableDateTime:`${yyyy}-${mm}-${dd} ${daySchedule.start}`
-})
-
+if (todaySlots.length === 0 && tomorrowSlots.length === 0) {
+  return res.status(409).json({
+    error: "No slots available",
+    todaySlots: [],
+    tomorrowSlots: []
+  });
 }
 
-if(daySchedule.start === daySchedule.end){
-
-const nextDate = new Date(date)
-nextDate.setDate(nextDate.getDate()+1)
-
-const yyyy = nextDate.getFullYear()
-const mm = (nextDate.getMonth()+1).toString().padStart(2,"0")
-const dd = nextDate.getDate().toString().padStart(2,"0")
-
-return res.status(409).json({
-error:"No demos available this day",
-nextAvailableDateTime:`${yyyy}-${mm}-${dd} ${daySchedule.start}`
-})
-
-}
-
-const startDateTime = new Date(`${date}T${daySchedule.start}:00`);
-const endDateTime = new Date(`${date}T${daySchedule.end}:00`);
-
-if(demoDateTime < startDateTime || demoDateTime >= endDateTime){
-
-const hh = startDateTime.getHours().toString().padStart(2,"0")
-const mm = startDateTime.getMinutes().toString().padStart(2,"0")
-
-return res.status(409).json({
-error:"This slot is outside allowed demo time",
-nextAvailableDateTime:`${date} ${hh}:${mm}`
-})
-
-}
-
-const demos=[]
-
-for(const l of clientLeads){
-for(const d of l.demo){
-if(d.date===date){
-demos.push(new Date(`${d.date}T${d.time}:00`))
-}
-}
-}
-
-demos.sort((a,b)=>a-b)
-
-let next=new Date(startDateTime)
-
-for(const slot of demos){
-
-if(Math.abs(slot-next)<GAP){
-next=new Date(slot.getTime()+GAP)
-}
-
-}
-
-if(demoDateTime < next){
-
-const hh = next.getHours().toString().padStart(2,"0")
-const mm = next.getMinutes().toString().padStart(2,"0")
-
-return res.status(409).json({
-error:"This slot is unavailable",
-nextAvailableDateTime:`${date} ${hh}:${mm}`
-})
-
+if (!getAvailableSlots(date, schedule, clientLeads).includes(time)) {
+  return res.status(409).json({
+    error: "Invalid slot",
+    todaySlots,
+    tomorrowSlots
+  });
 }
 
 // FINAL SLOT LOCK CHECK (prevents simultaneous booking)
