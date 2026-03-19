@@ -444,11 +444,17 @@ if(!clients[clientId].weeklySchedule){
 clients[clientId].weeklySchedule = {};
 }
 
-for(const iso in schedule){
-clients[clientId].weeklySchedule[iso] = schedule[iso]
+for (const iso in schedule) {
+  if (!schedule[iso].start || !schedule[iso].end) continue;
+
+  clients[clientId].weeklySchedule[iso] = {
+    day: schedule[iso].day,
+    start: schedule[iso].start,
+    end: schedule[iso].end
+  };
 }
 
-console.log("FINAL CLIENT DATA:", clients[clientId]);
+console.log("SAVING SCHEDULE:", JSON.stringify(clients[client].weeklySchedule, null, 2));
 
 fs.writeFileSync(clientsFile,JSON.stringify(clients,null,2))
 
