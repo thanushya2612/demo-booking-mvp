@@ -454,7 +454,7 @@ for (const iso in schedule) {
   };
 }
 
-console.log("SAVING SCHEDULE:", JSON.stringify(clients[client].weeklySchedule, null, 2));
+console.log("SAVING SCHEDULE:", JSON.stringify(clients[clientId].weeklySchedule, null, 2));
 
 fs.writeFileSync(clientsFile,JSON.stringify(clients,null,2))
 
