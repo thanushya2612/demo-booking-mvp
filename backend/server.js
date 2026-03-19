@@ -286,10 +286,6 @@ res.send(`
 <html>
 <head>
 
-<script>
-const CLIENT_ID = "${clientId}";
-</script>
-
 <style>
 
 body{font-family:Arial;padding:30px;background:#f4f4f4}
@@ -365,7 +361,7 @@ schedule[row.querySelector("input[id^='start']").id.replace("start-","")]={day,s
 
 }
 
-const res = await fetch("/save-schedule?client=${clientId}" + CLIENT_ID,{
+const res = await fetch("/save-schedule?client=${clientId}",{
 
 method:"POST",
 headers:{"Content-Type":"application/json"},
