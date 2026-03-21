@@ -634,6 +634,80 @@ writeDB(db);
   res.json({ message: "Lead created successfully." });
 });
 
+// ==============================
+// GET /available-slots
+app.get("/available-slots", (req, res) => {
+
+  const clientId = req.query.client;
+  if (!clientId) return res.status(400).json({ error: "Invalid client" });
+
+  const db = readDB();
+  const clients = JSON.parse(fs.readFileSync(clientsFile, "utf-8"));
+
+  const schedule = clients[clientId]?.weeklySchedule || {};
+  const clientLeads = db.clients[clientId]?.leads || [];
+
+  function getSlots(date) {
+    const GAP = 30 * 60 * 1000;
+    const daySchedule = schedule[date];
+    if (!daySchedule || daySchedule.start === daySchedule.end) return [];
+
+    const start = new Date(`${date}T${daySchedule.start}:00`);
+    const end = new Date(`${date}T${daySchedule.end}:00`);
+
+    const booked = [];
+
+    for (const l of clientLeads) {
+      for (const d of l.demo) {
+        if (d.date === date) {
+          booked.push(new Date(`${d.date}T${d.time}:00`));
+        }
+      }
+    }
+
+    const slots = [];
+    let current = new Date(start);
+    const now = new Date();
+
+    while (current < end) {
+
+      if (current > now) {
+        let conflict = false;
+
+        for (const b of booked) {
+          if (Math.abs(b - current) < GAP) {
+            conflict = true;
+            break;
+          }
+        }
+
+        if (!conflict) {
+          const hh = current.getHours().toString().padStart(2, "0");
+          const mm = current.getMinutes().toString().padStart(2, "0");
+          slots.push(`${hh}:${mm}`);
+        }
+      }
+
+      current = new Date(current.getTime() + GAP);
+    }
+
+    return slots;
+  }
+
+  const today = new Date();
+  const todayISO = today.toISOString().split("T")[0];
+
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(today.getDate() + 1);
+  const tomorrowISO = tomorrowDate.toISOString().split("T")[0];
+
+  const todaySlots = getSlots(todayISO);
+  const tomorrowSlots = getSlots(tomorrowISO);
+
+  res.json({ todaySlots, tomorrowSlots, todayISO, tomorrowISO });
+
+});
+
 // ===============================
 // DEMO POST (FOR BOTH MAIN AND NEW LINKS)
 app.post("/demo", (req, res) => {
