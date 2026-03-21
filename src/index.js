@@ -4,6 +4,9 @@ const paramEmail = params.get("email");
 const paramContact = params.get("contact");
 const clientId = params.get("client");
 
+let selectedDate = null;
+let selectedTime = null;
+
 // ================== Chatbot Start ==================
 async function start() {
   const res = await fetch("/chatbot/start");
@@ -65,42 +68,35 @@ const historyLink =
 
 // ================== Main Demo Form ==================
 document.getElementById("submitDemo").onclick = async () => {
-  const date = document.getElementById("date").value;
-  const time = document.getElementById("time").value;
-  const email = document.getElementById("email").value;
-  const contactNumber = document.getElementById("contactNumber").value;
 
-  if (!email || !contactNumber) {
-    alert("Please submit your lead details first.");
+  if (!selectedDate || !selectedTime) {
+    alert("Select a slot first");
     return;
   }
+
+  const email = document.getElementById("email").value;
+  const contactNumber = document.getElementById("contactNumber").value;
 
   const res = await fetch(`/demo?client=${clientId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ date, time, email, contactNumber })
+    body: JSON.stringify({
+      date: selectedDate,
+      time: selectedTime,
+      email,
+      contactNumber
+    })
   });
 
   const data = await res.json();
-  const demoMsg = document.getElementById("demoMessage");
+  document.getElementById("demoMessage").innerText = data.message || data.error;
 
-  demoMsg.innerText = data.error || data.message;
-  demoMsg.style.color = data.error ? "red" : "green";
-
-  if (!data.error) {
-    document.getElementById("submitDemo").disabled = true;
-  }
-
-  if (data.nextAvailable) {
-    demoMsg.innerText += ` Next available: ${data.nextAvailable}`;
-  }
+  loadSlots(); // refresh slots
 };
 
 // ================== New Demo Link Form ==================
 if (document.getElementById("submitNewDemo")) {
   document.getElementById("submitNewDemo").onclick = async () => {
-    const date = document.getElementById("newDate").value;
-    const time = document.getElementById("newTime").value;
     const email = document.getElementById("newEmail").value;
     const contactNumber = document.getElementById("newContactNumber").value;
 
@@ -116,9 +112,36 @@ if (document.getElementById("submitNewDemo")) {
     msg.innerText = data.error || data.message;
     msg.style.color = data.error ? "red" : "green";
 
-    if (data.nextAvailable) {
-      msg.innerText += ` Next available: ${data.nextAvailable}`;
+    if (data.todaySlots || data.tomorrowSlots) {
+
+  let html = "";
+
+  html += "<h3>Today</h3>";
+
+  if (data.todaySlots.length === 0) {
+    html += "<p>No slots available today</p>";
+  } else {
+    data.todaySlots.forEach(t => {
+      html += `<button onclick="selectTime('${t}')">${t}</button> `;
+    });
+  }
+
+  const todayDay = new Date().getDay();
+
+  if (todayDay !== 0) { // hide tomorrow on Sunday
+    html += "<h3>Tomorrow</h3>";
+
+    if (data.tomorrowSlots.length === 0) {
+      html += "<p>No slots available tomorrow</p>";
+    } else {
+      data.tomorrowSlots.forEach(t => {
+        html += `<button onclick="selectTime('${t}')">${t}</button> `;
+      });
     }
+  }
+
+  demoMsg.innerHTML += html;
+}
   };
 }
 
@@ -136,3 +159,50 @@ if (mode === "demo") {
 }
 
 start();
+loadSlots();
+
+function selectSlot(date, time) {
+  selectedDate = date;
+  selectedTime = time;
+}
+
+function renderSlots(data, containerId) {
+
+  const div = document.getElementById(containerId);
+  div.innerHTML = "";
+
+  const todayDay = new Date().getDay();
+
+  // TODAY
+  div.innerHTML += "<h3>Today</h3>";
+
+  if (!data.todaySlots.length) {
+    div.innerHTML += "<p>No slots available today</p>";
+  } else {
+    data.todaySlots.forEach(t => {
+      div.innerHTML += `<button onclick="selectSlot('${data.todayISO}','${t}')">${t}</button>`;
+    });
+  }
+
+  // TOMORROW (hide Sunday)
+  if (todayDay !== 0) {
+
+    div.innerHTML += "<h3>Tomorrow</h3>";
+
+    if (!data.tomorrowSlots.length) {
+      div.innerHTML += "<p>No slots available tomorrow. Please try tomorrow for day after tomorrow.</p>";
+    } else {
+      data.tomorrowSlots.forEach(t => {
+        div.innerHTML += `<button onclick="selectSlot('${data.tomorrowISO}','${t}')">${t}</button>`;
+      });
+    }
+  }
+}
+
+async function loadSlots() {
+  const res = await fetch(`/available-slots?client=${clientId}`);
+  const data = await res.json();
+
+  renderSlots(data, "slots");
+  renderSlots(data, "newSlots");
+}
